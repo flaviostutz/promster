@@ -1,0 +1,30 @@
+version: '3.5'
+
+services:
+
+  promster:
+    build: .
+    image: flaviostutz/promster
+    ports:
+      - 9090:9090
+    environment:
+      - LOG_LEVEL=debug
+      - ETCD_URL=http://etcd0:2379
+      - SCRAPE_ETCD_PATH=/webservers
+
+  etcd0:
+    image: quay.io/coreos/etcd:v3.2.25
+    environment:
+      - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379
+      - ETCD_ADVERTISE_CLIENT_URLS=http://etcd0:2379
+    # ports:
+    #   - 2379:2379
+
+  generator:
+    image: labbsr0x/metrics-generator-tabajara
+    environment:
+      - COMPONENT_NAME=testserver
+      - COMPONENT_VERSION=1.0.0
+    ports:
+      - 3000:3000
+

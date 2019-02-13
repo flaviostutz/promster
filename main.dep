@@ -1,0 +1,20 @@
+package main
+
+import (
+	_ "errors"
+	_ "flag"
+	"fmt"
+	_ "log"
+	_ "os"
+	_ "os/signal"
+	_ "path/filepath"
+	_ "syscall"
+
+	_ "go.etcd.io/etcd/clientv3"
+	_ "github.com/go-cmd/cmd"
+	_ "github.com/sirupsen/logrus"
+)
+
+func main() {
+	fmt.Println("This is used for build caching purposes. Should be replaced.")
+}

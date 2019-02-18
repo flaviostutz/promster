@@ -1,10 +1,4 @@
 [
     {
-        "targets": [
-            "generator:3000"
-        ],
-        "labels": {
-            "": ""
-        }
     }
 ]

@@ -21,7 +21,7 @@ type ShellContext struct {
 //ExecShellTimeout execute a shell command (like bash -c 'your command') with a timeout. After that time, the process will be cancelled
 func ExecShellTimeout(command string, timeout time.Duration, ctx *ShellContext) (string, error) {
 	logrus.Debugf("shell command: %s", command)
-	acmd := cmd.NewCmd("bash", "-c", command)
+	acmd := cmd.NewCmd("sh", "-c", command)
 	statusChan := acmd.Start() // non-blocking
 	running := true
 	if ctx != nil {

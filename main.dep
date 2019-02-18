@@ -10,9 +10,10 @@ import (
 	_ "path/filepath"
 	_ "syscall"
 
-	_ "go.etcd.io/etcd/clientv3"
+	_ "github.com/flaviostutz/etcd-registry/etcd-registry"
 	_ "github.com/go-cmd/cmd"
 	_ "github.com/sirupsen/logrus"
+	_ "github.com/serialx/hashring"
 )
 
 func main() {

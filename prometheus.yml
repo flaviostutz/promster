@@ -8,10 +8,10 @@ scrape_configs:
     static_configs:
     - targets: ['localhost:9090']
 
-  - job_name: 'job-/metrics'
+  - job_name: 'shard'
     metrics_path: /metrics
     file_sd_configs:
-      - files:
+      - files: 
         - /servers.json
-      refresh_interval: 15s
+      # refresh_interval: 15s
 

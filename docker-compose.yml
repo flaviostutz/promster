@@ -6,11 +6,20 @@ services:
     build: .
     image: flaviostutz/promster
     ports:
-      - 9090:9090
+      - 9090
     environment:
       - LOG_LEVEL=debug
-      - ETCD_URL=http://etcd0:2379
-      - SCRAPE_ETCD_PATH=/webservers
+
+      - SCRAPE_ETCD_URL=http://etcd0:2379
+      - SCRAPE_ETCD_PATH=/webservers/generator
+      # - SCRAPE_LABELS ""
+      # - SCRAPE_ENDPOINTS /metrics
+      # - SCRAPE_INTERVAL 15s
+      # - REGISTRY_ETCD_URL=
+      - REGISTRY_ETCD_URL=http://etcd0:2379
+      - REGISTRY_ETCD_BASE=/registry
+      - REGISTRY_SERVICE=prom1
+      - REGISTRY_TTL=5
 
   etcd0:
     image: quay.io/coreos/etcd:v3.2.25
@@ -25,6 +34,9 @@ services:
     environment:
       - COMPONENT_NAME=testserver
       - COMPONENT_VERSION=1.0.0
+      - REGISTRY_ETCD_URL=http://etcd0:2379
+      - REGISTRY_ETCD_BASE=/webservers
+      - REGISTRY_SERVICE=generator
+      - REGISTRY_TTL=10
     ports:
-      - 3000:3000
-
+      - 3000

@@ -18,22 +18,26 @@ FROM prom/prometheus:v2.4.0
 
 ENV LOG_LEVEL 'info'
 
-COPY --from=BUILD /go/bin/* /bin/
-ADD startup.sh /
-ADD servers.json /
-ADD prometheus.yml /
-
-ENV ETCD_URL ""
-
+ENV SCRAPE_ETCD_URL ""
 ENV SCRAPE_ETCD_PATH ""
 ENV SCRAPE_LABELS ""
 ENV SCRAPE_ENDPOINTS /metrics
 ENV SCRAPE_INTERVAL 15s
 
-ENV REGISTRATION_ETCD_PATH ""
+ENV REGISTRY_ETCD_URL ""
+ENV REGISTRY_ETCD_BASE "/registry"
+ENV REGISTRY_SERVICE ""
+ENV REGISTRY_TTL "60"
 
 ENV RECORD_RULE_1_NAME ""
 ENV RECORD_RULE_1_EXPR ""
+
+USER root
+
+COPY --from=BUILD /go/bin/* /bin/
+ADD startup.sh /
+ADD prometheus.yml /
+ADD servers.json /
 
 ENTRYPOINT [ "/bin/sh" ]
 CMD [ "-C", "/startup.sh" ]

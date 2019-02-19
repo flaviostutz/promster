@@ -2,25 +2,6 @@ version: '3.5'
 
 services:
 
-  promster:
-    build: .
-    image: flaviostutz/promster
-    ports:
-      - 9090
-    environment:
-      - LOG_LEVEL=debug
-
-      - SCRAPE_ETCD_URL=http://etcd0:2379
-      - SCRAPE_ETCD_PATH=/webservers/generator
-      # - SCRAPE_LABELS ""
-      # - SCRAPE_ENDPOINTS /metrics
-      # - SCRAPE_INTERVAL 15s
-      # - REGISTRY_ETCD_URL=
-      - REGISTRY_ETCD_URL=http://etcd0:2379
-      - REGISTRY_ETCD_BASE=/registry
-      - REGISTRY_SERVICE=prom1
-      - REGISTRY_TTL=5
-
   etcd0:
     image: quay.io/coreos/etcd:v3.2.25
     environment:
@@ -40,3 +21,77 @@ services:
       - REGISTRY_TTL=10
     ports:
       - 3000
+
+  promster-level1:
+    build: .
+    image: flaviostutz/promster
+    ports:
+      - 9090
+    environment:
+      - LOG_LEVEL=debug
+
+      - REGISTRY_ETCD_URL=http://etcd0:2379
+      - REGISTRY_ETCD_BASE=/registry
+      - REGISTRY_SERVICE=prom-level1
+      - REGISTRY_TTL=5
+
+      - SCRAPE_ETCD_URL=http://etcd0:2379
+      - SCRAPE_ETCD_PATH=/webservers/generator
+      - SCRAPE_INTERVAL=5s
+      - SCRAPE_TIMEOUT=3s
+      - RETENTION_TIME=30m
+
+      - RECORD_RULE_1_NAME=level1:http_requests_app_total:irate
+      - RECORD_RULE_1_EXPR=sum(irate(http_requests_app_total[2m])) without (job,server_name,instance)
+      - EVALUATION_INTERVAL=20s
+
+  promster-level2:
+    build: .
+    image: flaviostutz/promster
+    ports:
+      - 9090
+    environment:
+      - LOG_LEVEL=debug
+
+      - REGISTRY_ETCD_URL=http://etcd0:2379
+      - REGISTRY_ETCD_BASE=/registry
+      - REGISTRY_SERVICE=prom-level2
+      - REGISTRY_TTL=5
+
+      - SCRAPE_ETCD_URL=http://etcd0:2379
+      - SCRAPE_ETCD_PATH=/registry/prom-level1
+      - SCRAPE_ENDPOINTS=/federate
+      - SCRAPE_MATCH_REGEX=level1:.*
+      - SCRAPE_INTERVAL=5s
+      - SCRAPE_TIMEOUT=3s
+      - RETENTION_TIME=30m
+
+      - RECORD_RULE_1_NAME=level2:http_requests_app_total:irate
+      - RECORD_RULE_1_EXPR=sum(level1:http_requests_app_total:irate) without (job,instance)
+
+      - RECORD_RULE_2_NAME=total:http_requests_app_total:irate
+      - RECORD_RULE_2_EXPR=sum(level1:http_requests_app_total:irate)
+
+      - EVALUATION_INTERVAL=20s
+
+  promster-level3:
+    build: .
+    image: flaviostutz/promster
+    ports:
+      - 9090
+    environment:
+      - LOG_LEVEL=debug
+
+      - SCRAPE_ETCD_URL=http://etcd0:2379
+      - SCRAPE_ETCD_PATH=/registry/prom-level2
+      - SCRAPE_ENDPOINTS=/federate
+      - SCRAPE_MATCH_REGEX=level2:.*
+      - SCRAPE_INTERVAL=5s
+      - SCRAPE_TIMEOUT=3s
+      - RETENTION_TIME=30m
+
+      - RECORD_RULE_1_NAME=level3:http_requests_app_total:irate
+      - RECORD_RULE_1_EXPR=sum(level2:http_requests_app_total:irate) without (job,instance)
+      
+      - EVALUATION_INTERVAL=20s
+

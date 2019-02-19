@@ -4,8 +4,8 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"html/template"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/go-cmd/cmd"

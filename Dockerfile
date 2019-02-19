@@ -20,9 +20,13 @@ ENV LOG_LEVEL 'info'
 
 ENV SCRAPE_ETCD_URL ""
 ENV SCRAPE_ETCD_PATH ""
-ENV SCRAPE_LABELS ""
 ENV SCRAPE_ENDPOINTS /metrics
-ENV SCRAPE_INTERVAL 15s
+ENV SCRAPE_MATCH_REGEX ""
+ENV SCRAPE_INTERVAL 30s
+ENV SCRAPE_TIMEOUT 30s
+
+ENV EVALUATION_INTERVAL 30s
+ENV RETENTION_TIME 1d
 
 ENV REGISTRY_ETCD_URL ""
 ENV REGISTRY_ETCD_BASE "/registry"
@@ -37,7 +41,7 @@ USER root
 COPY --from=BUILD /go/bin/* /bin/
 ADD startup.sh /
 ADD prometheus.yml /
-ADD servers.json /
+ADD prometheus.yml.tmpl /
 
 ENTRYPOINT [ "/bin/sh" ]
 CMD [ "-C", "/startup.sh" ]

@@ -27,6 +27,11 @@ func main() {
 	etcdServiceName0 := flag.String("etcd-service-name", "", "Prometheus cluster service name. Ex.: proml1")
 	etcdServiceTTL0 := flag.Int("etcd-node-ttl", -1, "Node registration TTL in ETCD. After killing Promster instance, it will vanish from ETCD registry after this time")
 	scrapeEtcdPath0 := flag.String("scrape-etcd-path", "", "Base ETCD path for getting servers to be scrapped")
+	scrapeEndpoints0 := flag.String("scrape-endpoints", "/metrics", "Endpoints for scrape of each target. May contain a list separated by ','.")
+	scrapeInterval0 := flag.String("scrape-interval", "30s", "Prometheus scrape interval")
+	scrapeTimeout0 := flag.String("scrape-timeout", "30s", "Prometheus scrape timeout")
+	scrapeMatch0 := flag.String("scrape-match", "", "Metrics regex filter applied on scraped targets. Commonly used in conjunction with /federate metrics endpoint")
+	evaluationInterval0 := flag.String("evaluation-interval", "30s", "Prometheus evaluation interval")
 	flag.Parse()
 
 	etcdURL := *etcdURL0
@@ -35,6 +40,12 @@ func main() {
 	etcdServiceName := *etcdServiceName0
 	scrapeEtcdPath := *scrapeEtcdPath0
 	etcdServiceTTL := *etcdServiceTTL0
+	scrapeInterval := *scrapeInterval0
+	scrapeTimeout := *scrapeTimeout0
+	scrapeMatch := *scrapeMatch0
+	evaluationInterval := *evaluationInterval0
+	se := *scrapeEndpoints0
+	scrapeEndpoints := strings.Split(se, ",")
 
 	if etcdURL == "" {
 		panic("--etcd-url should be defined")
@@ -83,6 +94,19 @@ func main() {
 		panic(err)
 	}
 
+	logrus.Debugf("Updating prometheus file...")
+	time.Sleep(2 * time.Second)
+	err = updatePrometheusConfig("/prometheus.yml", scrapeInterval, scrapeTimeout, evaluationInterval, scrapeEndpoints, scrapeMatch)
+	if err != nil {
+		panic(err)
+	}
+
+	logrus.Debugf("Creating rules file...")
+	err = createRulesFromENV("/rules.yml")
+	if err != nil {
+		panic(err)
+	}
+
 	logrus.Debugf("Initializing ETCD client")
 	cli, err := clientv3.New(clientv3.Config{Endpoints: endpoints, DialTimeout: 10 * time.Second})
 	if err != nil {
@@ -120,14 +144,106 @@ func main() {
 		case scrapeTargets = <-sourceTargetsChan:
 			logrus.Debugf("updated scapeTargets: %s", scrapeTargets)
 		}
-		err := updatePrometheusTargets(scrapeTargets, promNodes)
+		err := updatePrometheusTargets(scrapeTargets, promNodes, scrapeEndpoints)
 		if err != nil {
 			logrus.Warnf("Couldn't update Prometheus scrape targets. err=%s", err)
 		}
 	}
 }
 
-func updatePrometheusTargets(scrapeTargets []string, promNodes []string) error {
+func updatePrometheusConfig(prometheusFile string, scrapeInterval string, scrapeTimeout string, evaluationInterval string, scrapeEndpoints []string, scrapeMatch string) error {
+
+	input := make(map[string]interface{})
+	input["scrapeInterval"] = scrapeInterval
+	input["scrapeTimeout"] = scrapeTimeout
+	input["evaluationInterval"] = evaluationInterval
+	input["scrapeEndpoints"] = scrapeEndpoints
+	input["scrapeMatch"] = scrapeMatch
+	contents, err := executeTemplate("/", "prometheus.yml.tmpl", input)
+	if err != nil {
+		return err
+	}
+
+	// cont, err := ioutil.ReadFile(prometheusFile)
+	// if err != nil {
+	// 	return err
+	// }
+	// contents := string(cont)
+	// contents = strings.Replace(contents, "333s", scrapeInterval, -1)
+	// contents = strings.Replace(contents, "222s", scrapeTimeout, -1)
+	// contents = strings.Replace(contents, "111s", evaluationInterval, -1)
+
+	logrus.Debugf("%s: '%s'", prometheusFile, contents)
+	err = ioutil.WriteFile(prometheusFile, []byte(contents), 0666)
+	if err != nil {
+		return err
+	}
+
+	_, err = ExecShell("wget --post-data='' http://localhost:9090/-/reload -O -")
+	if err != nil {
+		logrus.Warnf("Couldn't reload Prometheus config. Maybe it wasn't initialized at this time and will get the config as soon as getting started. Ignoring.")
+	}
+
+	return nil
+}
+
+func createRulesFromENV(rulesFile string) error {
+	env := make(map[string]string)
+	for _, e := range os.Environ() {
+		pair := strings.Split(e, "=")
+		env[pair[0]] = pair[1]
+	}
+
+	rules := make(map[string]string)
+	for i := 1; i < 100; i++ {
+		kname := fmt.Sprintf("RECORD_RULE_%d_NAME", i)
+		kexpr := fmt.Sprintf("RECORD_RULE_%d_EXPR", i)
+		vname, exists := env[kname]
+		if !exists {
+			break
+		}
+		vexpr, exists := env[kexpr]
+		if !exists {
+			break
+		}
+		rules[vname] = vexpr
+	}
+
+	if len(rules) == 0 {
+		logrus.Infof("No prometheus rules found in environment variables")
+		return nil
+	}
+
+	logrus.Debugf("Found %d rules: %s", len(rules), rules)
+
+	rulesContents := `groups:
+  - name: env-rules
+    rules:`
+
+	for k, v := range rules {
+		rc := `%s
+    - record: %s
+      expr: %s`
+		rulesContents = fmt.Sprintf(rc, rulesContents, k, v)
+	}
+
+	logrus.Debugf("rulesContents: %s", rulesContents)
+
+	logrus.Debugf("%s: '%s'", rulesFile, rulesContents)
+	err := ioutil.WriteFile(rulesFile, []byte(rulesContents), 0666)
+	if err != nil {
+		return err
+	}
+
+	_, err = ExecShell("wget --post-data='' http://localhost:9090/-/reload -O -")
+	if err != nil {
+		logrus.Warnf("Couldn't reload Prometheus config. Maybe it wasn't initialized at this time and will get the config as soon as getting started. Ignoring.")
+	}
+
+	return nil
+}
+
+func updatePrometheusTargets(scrapeTargets []string, promNodes []string, scrapeEndpoints []string) error {
 	//Apply consistent hashing to determine which scrape endpoints will
 	//be handled by this Prometheus instance
 	ring := hashring.New(promNodes)
@@ -163,7 +279,7 @@ func updatePrometheusTargets(scrapeTargets []string, promNodes []string) error {
 	//force Prometheus to update its configuration live
 	_, err = ExecShell("wget --post-data='' http://localhost:9090/-/reload -O -")
 	if err != nil {
-		return nil
+		return err
 	}
 	// output, err0 := ExecShell("kill -HUP $(ps | grep prometheus | awk '{print $1}' | head -1)")
 	// if err0 != nil {

@@ -1,0 +1,27 @@
+global:
+  scrape_interval:     {{.scrapeInterval}}
+  scrape_timeout:      {{.scrapeTimeout}}
+  evaluation_interval: {{.evaluationInterval}}
+
+rule_files:
+  - /rules.yml
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+    - targets: ['localhost:9090']
+
+{{$scrapeMatch := .scrapeMatch}}
+{{range .scrapeEndpoints}}
+  - job_name: '{{.}}'
+    metrics_path: {{.}}
+{{if not (eq $scrapeMatch "")}}
+    params:
+      'match[]':
+        - '{__name__=~"{{$scrapeMatch}}"}'
+{{end}}
+    file_sd_configs:
+      - files: 
+        - /servers.json
+
+{{end}}

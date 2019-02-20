@@ -3,11 +3,13 @@ Prometheus with dynamic clustering and scrape sharding capabilities based on ETC
 
 Promster is a process that runs in parallel to Prometheus and operates by changing prometheus.yml and file with lists of hosts/federated Prometheus to be scraped dynamically.
 
-By manipulating the list of hosts, it can be used to configure hierarquical schemes of Prometheus chains for large scale deployments. See diagram below:
+By using record rules and sharding scrape among servers, you can reduce the dimensionality of metrics, keeping then under variability control. Promster manages the list of hosts so that it can be used to configure hierarquical schemes of Prometheus chains for large scale deployments. See an example in diagrams below:
 
 ![hierarchical](docs/hierarchical-prometheus.png "diagram")
 
-By using record rules, you can reduce the dimensionality of metrics, keeping then under variability control.
+![hierarchical](docs/etcd-prometheus.png "diagram")
+
+Promster helps you create this kind of Prometheus deployment by helping you can create those record rules, discover scrape targets, discover sibilings Prometheus instances and then distribute the load across those instances accordingly so that if you scale the number of Prometheus instances the (sharded) load will get distributed over the instances automatically.
 
 # Usage
 

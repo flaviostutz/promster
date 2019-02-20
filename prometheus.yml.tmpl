@@ -12,7 +12,7 @@ scrape_configs:
     - targets: ['localhost:9090']
 
 {{$scrapeMatch := .scrapeMatch}}
-{{range .scrapeEndpoints}}
+{{range .scrapePaths}}
   - job_name: '{{.}}'
     metrics_path: {{.}}
 {{if not (eq $scrapeMatch "")}}

@@ -20,21 +20,22 @@ import (
 )
 
 func main() {
-	logLevel := flag.String("loglevel", "debug", "debug, info, warning, error")
-	etcdURL0 := flag.String("etcd-url", "", "ETCD URLs. ex: http://etcd0:2379")
-	etcdURLScrape0 := flag.String("etcd-url-scrape", "", "ETCD URLs for scrape source server. If empty, will be the same as --etcd-url. ex: http://etcd0:2379")
-	etcdBase0 := flag.String("etcd-base", "/registry", "ETCD base path for services")
-	etcdServiceName0 := flag.String("etcd-service-name", "", "Prometheus cluster service name. Ex.: proml1")
-	etcdServiceTTL0 := flag.Int("etcd-node-ttl", -1, "Node registration TTL in ETCD. After killing Promster instance, it will vanish from ETCD registry after this time")
+
+	logLevel := flag.String("loglevel", "info", "debug, info, warning, error")
+	etcdURLRegistry0 := flag.String("registry-etcd-url", "", "ETCD URLs. ex: http://etcd0:2379")
+	etcdBase0 := flag.String("registry-etcd-base", "/registry", "ETCD base path for services")
+	etcdServiceName0 := flag.String("registry-service-name", "", "Prometheus cluster service name. Ex.: proml1")
+	etcdServiceTTL0 := flag.Int("registry-node-ttl", -1, "Node registration TTL in ETCD. After killing Promster instance, it will vanish from ETCD registry after this time")
+	etcdURLScrape0 := flag.String("scrape-etcd-url", "", "ETCD URLs for scrape source server. If empty, will be the same as --etcd-url. ex: http://etcd0:2379")
 	scrapeEtcdPath0 := flag.String("scrape-etcd-path", "", "Base ETCD path for getting servers to be scrapped")
-	scrapeEndpoints0 := flag.String("scrape-endpoints", "/metrics", "Endpoints for scrape of each target. May contain a list separated by ','.")
+	scrapePaths0 := flag.String("scrape-paths", "/metrics", "URI for scrape of each target. May contain a list separated by ','.")
 	scrapeInterval0 := flag.String("scrape-interval", "30s", "Prometheus scrape interval")
 	scrapeTimeout0 := flag.String("scrape-timeout", "30s", "Prometheus scrape timeout")
 	scrapeMatch0 := flag.String("scrape-match", "", "Metrics regex filter applied on scraped targets. Commonly used in conjunction with /federate metrics endpoint")
 	evaluationInterval0 := flag.String("evaluation-interval", "30s", "Prometheus evaluation interval")
 	flag.Parse()
 
-	etcdURL := *etcdURL0
+	etcdURLRegistry := *etcdURLRegistry0
 	etcdURLScrape := *etcdURLScrape0
 	etcdBase := *etcdBase0
 	etcdServiceName := *etcdServiceName0
@@ -44,27 +45,29 @@ func main() {
 	scrapeTimeout := *scrapeTimeout0
 	scrapeMatch := *scrapeMatch0
 	evaluationInterval := *evaluationInterval0
-	se := *scrapeEndpoints0
-	scrapeEndpoints := strings.Split(se, ",")
+	se := *scrapePaths0
+	scrapePaths := strings.Split(se, ",")
 
-	if etcdURL == "" {
-		panic("--etcd-url should be defined")
-	}
+	// if etcdURLRegistry == "" {
+	// 	panic("--etcd-url-registry should be defined")
+	// }
 	if etcdURLScrape == "" {
 		panic("--etcd-url-scrape should be defined")
 	}
 
-	if etcdBase == "" {
-		panic("--etcd-base should be defined")
-	}
-	if etcdServiceName == "" {
-		panic("--etcd-service-name should be defined")
+	if etcdURLRegistry != "" {
+		if etcdBase == "" {
+			panic("--etcd-base should be defined")
+		}
+		if etcdServiceName == "" {
+			panic("--etcd-service-name should be defined")
+		}
+		if etcdServiceTTL == -1 {
+			panic("--etcd-node-ttl should be defined")
+		}
 	}
 	if scrapeEtcdPath == "" {
 		panic("--scrape-etcd-path should be defined")
-	}
-	if etcdServiceTTL == -1 {
-		panic("--etcd-node-ttl should be defined")
 	}
 
 	switch *logLevel {
@@ -88,15 +91,9 @@ func main() {
 	// 	panic(err)
 	// }
 
-	endpoints := strings.Split(etcdURL, ",")
-	reg, err := etcdregistry.NewEtcdRegistry(endpoints, etcdBase, 10*time.Second)
-	if err != nil {
-		panic(err)
-	}
-
 	logrus.Debugf("Updating prometheus file...")
-	time.Sleep(2 * time.Second)
-	err = updatePrometheusConfig("/prometheus.yml", scrapeInterval, scrapeTimeout, evaluationInterval, scrapeEndpoints, scrapeMatch)
+	time.Sleep(5 * time.Second)
+	err := updatePrometheusConfig("/prometheus.yml", scrapeInterval, scrapeTimeout, evaluationInterval, scrapePaths, scrapeMatch)
 	if err != nil {
 		panic(err)
 	}
@@ -107,25 +104,45 @@ func main() {
 		panic(err)
 	}
 
-	logrus.Debugf("Initializing ETCD client")
-	cli, err := clientv3.New(clientv3.Config{Endpoints: endpoints, DialTimeout: 10 * time.Second})
+	nodesChan := make(chan []string, 0)
+	if etcdURLRegistry != "" {
+		logrus.Debugf("Initializing Registry client. etcdURLRegistry=%s", etcdURLRegistry)
+		endpointsRegistry := strings.Split(etcdURLRegistry, ",")
+		registry, err := etcdregistry.NewEtcdRegistry(endpointsRegistry, etcdBase, 10*time.Second)
+		if err != nil {
+			panic(err)
+		}
+		logrus.Infof("Keeping self node registered on ETCD...")
+		go keepSelfNodeRegistered(registry, etcdServiceName, time.Duration(etcdServiceTTL)*time.Second)
+
+		logrus.Debugf("Initializing ETCD client for registry")
+		cliRegistry, err := clientv3.New(clientv3.Config{Endpoints: endpointsRegistry, DialTimeout: 10 * time.Second})
+		if err != nil {
+			logrus.Errorf("Could not initialize ETCD client. err=%s", err)
+			panic(err)
+		}
+		logrus.Infof("Etcd client initialized")
+		servicePath := fmt.Sprintf("%s/%s/", etcdBase, etcdServiceName)
+
+		logrus.Infof("Starting to watch registered prometheus nodes...")
+		go watchRegisteredNodes(cliRegistry, servicePath, nodesChan)
+	} else {
+		go func() {
+			nodesChan <- []string{getSelfNodeName()}
+		}()
+	}
+
+	logrus.Debugf("Initializing ETCD client for source scrape targets")
+	logrus.Infof("Starting to watch source scrape targets. etcdURLScrape=%s", etcdURLScrape)
+	endpointsScrape := strings.Split(etcdURLScrape, ",")
+	cliScrape, err := clientv3.New(clientv3.Config{Endpoints: endpointsScrape, DialTimeout: 10 * time.Second})
 	if err != nil {
 		logrus.Errorf("Could not initialize ETCD client. err=%s", err)
 		panic(err)
 	}
-	logrus.Infof("Etcd client initialized")
-	servicePath := fmt.Sprintf("%s/%s/", etcdBase, etcdServiceName)
-
-	logrus.Infof("Starting to watch registered prometheus nodes...")
-	nodesChan := make(chan []string, 0)
-	go watchRegisteredNodes(cli, servicePath, nodesChan)
-
-	logrus.Infof("Starting to watch source scrape targets...")
+	logrus.Infof("Etcd client initialized for scrape")
 	sourceTargetsChan := make(chan []string, 0)
-	go watchSourceScrapeTargets(cli, scrapeEtcdPath, sourceTargetsChan)
-
-	logrus.Infof("Keeping self node registered on ETCD...")
-	go keepSelfNodeRegistered(reg, etcdServiceName, time.Duration(etcdServiceTTL)*time.Second)
+	go watchSourceScrapeTargets(cliScrape, scrapeEtcdPath, sourceTargetsChan)
 
 	promNodes := make([]string, 0)
 	scrapeTargets := make([]string, 0)
@@ -144,34 +161,25 @@ func main() {
 		case scrapeTargets = <-sourceTargetsChan:
 			logrus.Debugf("updated scapeTargets: %s", scrapeTargets)
 		}
-		err := updatePrometheusTargets(scrapeTargets, promNodes, scrapeEndpoints)
+		err := updatePrometheusTargets(scrapeTargets, promNodes)
 		if err != nil {
 			logrus.Warnf("Couldn't update Prometheus scrape targets. err=%s", err)
 		}
 	}
 }
 
-func updatePrometheusConfig(prometheusFile string, scrapeInterval string, scrapeTimeout string, evaluationInterval string, scrapeEndpoints []string, scrapeMatch string) error {
-
+func updatePrometheusConfig(prometheusFile string, scrapeInterval string, scrapeTimeout string, evaluationInterval string, scrapePaths []string, scrapeMatch string) error {
+	logrus.Infof("updatePrometheusConfig. scrapeInterval=%s,scrapeTimeout=%s,evaluationInterval=%s,scrapePaths=%s,scrapeMatch=%s", scrapeInterval, scrapeTimeout, evaluationInterval, scrapePaths, scrapeMatch)
 	input := make(map[string]interface{})
 	input["scrapeInterval"] = scrapeInterval
 	input["scrapeTimeout"] = scrapeTimeout
 	input["evaluationInterval"] = evaluationInterval
-	input["scrapeEndpoints"] = scrapeEndpoints
+	input["scrapePaths"] = scrapePaths
 	input["scrapeMatch"] = scrapeMatch
 	contents, err := executeTemplate("/", "prometheus.yml.tmpl", input)
 	if err != nil {
 		return err
 	}
-
-	// cont, err := ioutil.ReadFile(prometheusFile)
-	// if err != nil {
-	// 	return err
-	// }
-	// contents := string(cont)
-	// contents = strings.Replace(contents, "333s", scrapeInterval, -1)
-	// contents = strings.Replace(contents, "222s", scrapeTimeout, -1)
-	// contents = strings.Replace(contents, "111s", evaluationInterval, -1)
 
 	logrus.Debugf("%s: '%s'", prometheusFile, contents)
 	err = ioutil.WriteFile(prometheusFile, []byte(contents), 0666)
@@ -243,9 +251,10 @@ func createRulesFromENV(rulesFile string) error {
 	return nil
 }
 
-func updatePrometheusTargets(scrapeTargets []string, promNodes []string, scrapeEndpoints []string) error {
+func updatePrometheusTargets(scrapeTargets []string, promNodes []string) error {
 	//Apply consistent hashing to determine which scrape endpoints will
 	//be handled by this Prometheus instance
+	logrus.Debugf("updatePrometheusTargets. scrapeTargets=%s, promNodes=%s", scrapeTargets, promNodes)
 	ring := hashring.New(promNodes)
 	selfNodeName := getSelfNodeName()
 	selfScrapeTargets := make([]string, 0)

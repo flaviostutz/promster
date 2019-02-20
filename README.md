@@ -11,6 +11,8 @@ By using record rules and sharding scrape among servers, you can reduce the dime
 
 Promster helps you create this kind of Prometheus deployment by helping you can create those record rules, discover scrape targets, discover sibilings Prometheus instances and then distribute the load across those instances accordingly so that if you scale the number of Prometheus instances the (sharded) load will get distributed over the instances automatically.
 
+Se an example below:
+
 # Usage
 
 ```yml

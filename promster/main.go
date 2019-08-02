@@ -255,16 +255,19 @@ func updatePrometheusTargets(scrapeTargets []string, promNodes []string) error {
 	//Apply consistent hashing to determine which scrape endpoints will
 	//be handled by this Prometheus instance
 	logrus.Debugf("updatePrometheusTargets. scrapeTargets=%s, promNodes=%s", scrapeTargets, promNodes)
-	ring := hashring.New(promNodes)
+
+	ring := hashring.New(hashList(promNodes))
 	selfNodeName := getSelfNodeName()
 	selfScrapeTargets := make([]string, 0)
 	for _, starget := range scrapeTargets {
-		promNode, ok := ring.GetNode(starget)
+		hashedPromNode, ok := ring.GetNode(stringSha512(starget))
 		if !ok {
 			return fmt.Errorf("Couldn't get prometheus node for %s in consistent hash", starget)
 		}
-		logrus.Debugf("Target %s - Prometheus %s", starget, promNode)
-		if promNode == selfNodeName {
+		logrus.Debugf("Target %s - Prometheus %x", starget, hashedPromNode)
+		hashedSelf := stringSha512(selfNodeName)
+		if hashedSelf == hashedPromNode {
+			logrus.Debugf("Target %s - Prometheus %s", starget, selfNodeName)
 			selfScrapeTargets = append(selfScrapeTargets, starget)
 		}
 	}
@@ -309,11 +312,11 @@ func keepSelfNodeRegistered(reg *etcdregistry.EtcdRegistry, etcdServiceName stri
 }
 
 func getSelfNodeName() string {
-	hostname, err := os.Hostname()
+	hostip, err := ExecShell("ip route get 8.8.8.8 | grep -oE 'src ([0-9\\.]+)' | cut -d ' ' -f 2")
 	if err != nil {
 		panic(err)
 	}
-	return fmt.Sprintf("%s:9090", hostname)
+	return fmt.Sprintf("%s:9090", strings.TrimSpace(hostip))
 }
 
 func watchSourceScrapeTargets(cli *clientv3.Client, sourceTargetsPath string, sourceTargetsChan chan []string) {

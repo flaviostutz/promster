@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"crypto/sha512"
 	"fmt"
 	"strings"
 	"text/template"
@@ -142,3 +143,19 @@ func executeTemplate(dir string, templ string, input map[string]interface{}) (st
 // func setValue(ctx context.Context, cli *clientv3.Client, kv clientv3.KV) {
 // 	lease, _ := cli.Grant(ctx, 1)
 // }
+func stringSha512(str string) string {
+	hashedByte := sha512.Sum512([]byte(str))
+	hashedString := string(hashedByte[:])
+
+	return hashedString
+}
+
+func hashList(list []string) []string {
+	hashedList := make([]string, 0)
+	for _, item := range list {
+		hash := stringSha512(item)
+		hashedList = append(hashedList, hash)
+	}
+
+	return hashedList
+}

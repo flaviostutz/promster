@@ -43,6 +43,15 @@ ADD startup.sh /
 ADD prometheus.yml /
 ADD prometheus.yml.tmpl /
 
+RUN touch /rules.yml
+RUN touch /servers.json
+
+RUN chmod -R 777 /startup.sh
+RUN chmod -R 777 /prometheus.yml
+RUN chmod -R 777 /prometheus.yml.tmpl
+RUN chmod -R 777 /rules.yml
+RUN chmod -R 777 /servers.json
+
 ENTRYPOINT [ "/bin/sh" ]
 CMD [ "-C", "/startup.sh" ]
 

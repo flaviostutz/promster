@@ -13,8 +13,7 @@ RUN CGO_ENABLED=0 GOOS=linux go get promster
 
 #RUN go test -v promster
 
-
-FROM prom/prometheus:v2.4.0
+FROM prom/prometheus:v2.12.0
 
 ENV LOG_LEVEL 'info'
 

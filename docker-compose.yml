@@ -46,7 +46,6 @@ services:
       - EVALUATION_INTERVAL=20s
 
   promster-level2:
-    build: .
     image: flaviostutz/promster
     ports:
       - 9090
@@ -75,7 +74,6 @@ services:
       - EVALUATION_INTERVAL=20s
 
   promster-level3:
-    build: .
     image: flaviostutz/promster
     ports:
       - 9090

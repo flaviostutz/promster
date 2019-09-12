@@ -13,11 +13,17 @@ import (
 
 	"go.etcd.io/etcd/clientv3"
 
-	"github.com/flaviostutz/etcd-registry/etcd-registry"
+	etcdregistry "github.com/flaviostutz/etcd-registry/etcd-registry"
 	"github.com/serialx/hashring"
 
 	"github.com/sirupsen/logrus"
 )
+
+// SourceTarget defines the structure of a prometheus source target
+type SourceTarget struct {
+	Targets []string          `json:"targets"`
+	Labels  map[string]string `json:"labels,omitempty"`
+}
 
 func main() {
 
@@ -141,11 +147,11 @@ func main() {
 		panic(err)
 	}
 	logrus.Infof("Etcd client initialized for scrape")
-	sourceTargetsChan := make(chan []string, 0)
+	sourceTargetsChan := make(chan []SourceTarget, 0)
 	go watchSourceScrapeTargets(cliScrape, scrapeEtcdPath, sourceTargetsChan)
 
 	promNodes := make([]string, 0)
-	scrapeTargets := make([]string, 0)
+	scrapeTargets := make([]SourceTarget, 0)
 	go func() {
 		for {
 			logrus.Debugf("Prometheus nodes found: %s", promNodes)
@@ -251,18 +257,18 @@ func createRulesFromENV(rulesFile string) error {
 	return nil
 }
 
-func updatePrometheusTargets(scrapeTargets []string, promNodes []string) error {
+func updatePrometheusTargets(scrapeTargets []SourceTarget, promNodes []string) error {
 	//Apply consistent hashing to determine which scrape endpoints will
 	//be handled by this Prometheus instance
 	logrus.Debugf("updatePrometheusTargets. scrapeTargets=%s, promNodes=%s", scrapeTargets, promNodes)
 
 	ring := hashring.New(hashList(promNodes))
 	selfNodeName := getSelfNodeName()
-	selfScrapeTargets := make([]string, 0)
+	selfScrapeTargets := make([]SourceTarget, 0)
 	for _, starget := range scrapeTargets {
-		hashedPromNode, ok := ring.GetNode(stringSha512(starget))
+		hashedPromNode, ok := ring.GetNode(stringSha512(starget.Targets[0]))
 		if !ok {
-			return fmt.Errorf("Couldn't get prometheus node for %s in consistent hash", starget)
+			return fmt.Errorf("Couldn't get prometheus node for %s in consistent hash", starget.Targets[0])
 		}
 		logrus.Debugf("Target %s - Prometheus %x", starget, hashedPromNode)
 		hashedSelf := stringSha512(selfNodeName)
@@ -273,12 +279,7 @@ func updatePrometheusTargets(scrapeTargets []string, promNodes []string) error {
 	}
 
 	//generate json file
-	servers := make([]map[string][]string, 0)
-	targetsm := make(map[string][]string)
-	targetsm["targets"] = selfScrapeTargets
-	servers = append(servers, targetsm)
-
-	contents, err := json.Marshal(servers)
+	contents, err := json.Marshal(selfScrapeTargets)
 	if err != nil {
 		return err
 	}
@@ -304,7 +305,7 @@ func updatePrometheusTargets(scrapeTargets []string, promNodes []string) error {
 func keepSelfNodeRegistered(reg *etcdregistry.EtcdRegistry, etcdServiceName string, ttl time.Duration) {
 	node := etcdregistry.Node{}
 	node.Name = getSelfNodeName()
-	logrus.Debugf("Registering Prometheus instance on ETCD registry. service=%; node=%s", etcdServiceName, node)
+	logrus.Debugf("Registering Prometheus instance on ETCD registry. service=%s; node=%s", etcdServiceName, node)
 	err := reg.RegisterNode(context.TODO(), etcdServiceName, node, ttl)
 	if err != nil {
 		panic(err)
@@ -319,7 +320,7 @@ func getSelfNodeName() string {
 	return fmt.Sprintf("%s:9090", strings.TrimSpace(hostip))
 }
 
-func watchSourceScrapeTargets(cli *clientv3.Client, sourceTargetsPath string, sourceTargetsChan chan []string) {
+func watchSourceScrapeTargets(cli *clientv3.Client, sourceTargetsPath string, sourceTargetsChan chan []SourceTarget) {
 	logrus.Debugf("Getting source scrape targets from %s", sourceTargetsPath)
 
 	watchChan := cli.Watch(context.TODO(), sourceTargetsPath, clientv3.WithPrefix())
@@ -334,9 +335,12 @@ func watchSourceScrapeTargets(cli *clientv3.Client, sourceTargetsPath string, so
 			logrus.Debugf("No source scrape targets were found under %s", sourceTargetsPath)
 
 		} else {
-			sourceTargets := make([]string, 0)
+			sourceTargets := make([]SourceTarget, 0)
 			for _, kv := range rsp.Kvs {
-				sourceTargets = append(sourceTargets, path.Base(string(kv.Key)))
+				record := string(kv.Key)
+				targetAddress := path.Base(record)
+				serviceName := path.Base(path.Dir(record))
+				sourceTargets = append(sourceTargets, SourceTarget{Labels: map[string]string{"prsn": serviceName}, Targets: []string{targetAddress}})
 			}
 			sourceTargetsChan <- sourceTargets
 			logrus.Debugf("Found source scrape targets: %s", sourceTargets)

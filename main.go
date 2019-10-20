@@ -11,9 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"go.etcd.io/etcd/clientv3"
-
-	etcdregistry "github.com/flaviostutz/etcd-registry/etcd-registry"
+	"github.com/coreos/etcd/clientv3"
+	"github.com/flaviostutz/etcd-registry/etcd-registry"
 	"github.com/serialx/hashring"
 
 	"github.com/sirupsen/logrus"
@@ -38,6 +37,7 @@ func main() {
 	scrapeInterval0 := flag.String("scrape-interval", "30s", "Prometheus scrape interval")
 	scrapeTimeout0 := flag.String("scrape-timeout", "30s", "Prometheus scrape timeout")
 	scrapeMatch0 := flag.String("scrape-match", "", "Metrics regex filter applied on scraped targets. Commonly used in conjunction with /federate metrics endpoint")
+	scrapeShardingEnable0 := flag.Bool("scrape-shard-enable", false, "Enable sharding distribution among targets so that each Promster instance will scrape a different set of targets, enabling distribution of load among instances. Defaults to true.")
 	evaluationInterval0 := flag.String("evaluation-interval", "30s", "Prometheus evaluation interval")
 	flag.Parse()
 
@@ -50,6 +50,7 @@ func main() {
 	scrapeInterval := *scrapeInterval0
 	scrapeTimeout := *scrapeTimeout0
 	scrapeMatch := *scrapeMatch0
+	scrapeShardingEnable := *scrapeShardingEnable0
 	evaluationInterval := *evaluationInterval0
 	se := *scrapePaths0
 	scrapePaths := strings.Split(se, ",")
@@ -167,7 +168,7 @@ func main() {
 		case scrapeTargets = <-sourceTargetsChan:
 			logrus.Debugf("updated scapeTargets: %s", scrapeTargets)
 		}
-		err := updatePrometheusTargets(scrapeTargets, promNodes)
+		err := updatePrometheusTargets(scrapeTargets, promNodes, scrapeShardingEnable)
 		if err != nil {
 			logrus.Warnf("Couldn't update Prometheus scrape targets. err=%s", err)
 		}
@@ -257,7 +258,7 @@ func createRulesFromENV(rulesFile string) error {
 	return nil
 }
 
-func updatePrometheusTargets(scrapeTargets []SourceTarget, promNodes []string) error {
+func updatePrometheusTargets(scrapeTargets []SourceTarget, promNodes []string, shardingEnabled bool) error {
 	//Apply consistent hashing to determine which scrape endpoints will
 	//be handled by this Prometheus instance
 	logrus.Debugf("updatePrometheusTargets. scrapeTargets=%s, promNodes=%s", scrapeTargets, promNodes)
@@ -272,7 +273,7 @@ func updatePrometheusTargets(scrapeTargets []SourceTarget, promNodes []string) e
 		}
 		logrus.Debugf("Target %s - Prometheus %x", starget, hashedPromNode)
 		hashedSelf := stringSha512(selfNodeName)
-		if hashedSelf == hashedPromNode {
+		if !shardingEnabled || hashedSelf == hashedPromNode {
 			logrus.Debugf("Target %s - Prometheus %s", starget, selfNodeName)
 			selfScrapeTargets = append(selfScrapeTargets, starget)
 		}

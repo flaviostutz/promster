@@ -10,6 +10,7 @@ promster \
     --scrape-timeout=$SCRAPE_TIMEOUT \
     --scrape-paths=$SCRAPE_PATHS \
     --scrape-match=$SCRAPE_MATCH_REGEX \
+    --scrape-shard-enable=$SCRAPE_SHARD_ENABLE \
     --scrape-etcd-url=$SCRAPE_ETCD_URL \
     --scrape-etcd-path=$SCRAPE_ETCD_PATH \
     --registry-etcd-url=$REGISTRY_ETCD_URL \
@@ -19,8 +20,6 @@ promster \
 
 echo "Starting Prometheus..."
 prometheus --config.file=/prometheus.yml --web.enable-lifecycle --storage.tsdb.retention=$RETENTION_TIME
-
-
 
 
 

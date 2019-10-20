@@ -28,7 +28,7 @@ services:
     ports:
       - 9090
     environment:
-      - LOG_LEVEL=info
+      - LOG_LEVEL=debug
 
       - REGISTRY_ETCD_URL=http://etcd0:2379
       - REGISTRY_ETCD_BASE=/registry
@@ -86,6 +86,7 @@ services:
       - SCRAPE_MATCH_REGEX=level2:.*
       - SCRAPE_INTERVAL=5s
       - SCRAPE_TIMEOUT=3s
+      - SCRAPE_SHARD_ENABLE=true
       - RETENTION_TIME=30m
 
       - RECORD_RULE_1_NAME=level3:http_requests_app_total:irate

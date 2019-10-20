@@ -1,17 +1,16 @@
-FROM golang:1.10 AS BUILD
+FROM golang:1.12.4-stretch AS BUILD
 
-#doing dependency build separated from source build optimizes time for developer, but is not required
-#install external dependencies first
-ADD /main.dep $GOPATH/src/promster/main.go
-RUN go get -v promster
+RUN mkdir /promster
+WORKDIR /promster
+
+ADD go.mod .
+ADD go.sum .
+RUN go mod download
 
 #now build source code
-ADD promster $GOPATH/src/promster
-# RUN go get -v promster
-#embed C libs
-RUN CGO_ENABLED=0 GOOS=linux go get promster
+ADD . ./
+RUN CGO_ENABLED=0 GOOS=linux go build -o /go/bin/promster
 
-#RUN go test -v promster
 
 FROM prom/prometheus:v2.12.0
 
@@ -21,6 +20,7 @@ ENV SCRAPE_ETCD_URL ""
 ENV SCRAPE_ETCD_PATH ""
 ENV SCRAPE_PATHS /metrics
 ENV SCRAPE_MATCH_REGEX ""
+ENV SCRAPE_SHARD_ENABLE true
 ENV SCRAPE_INTERVAL 30s
 ENV SCRAPE_TIMEOUT 30s
 

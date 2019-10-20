@@ -98,6 +98,11 @@ services:
     environment:
       - LOG_LEVEL=info
 
+      - REGISTRY_ETCD_URL=http://etcd0:2379
+      - REGISTRY_ETCD_BASE=/registry
+      - REGISTRY_SERVICE=prom-level3
+      - REGISTRY_TTL=5
+
       - SCRAPE_ETCD_URL=http://etcd0:2379
       - SCRAPE_ETCD_PATH=/registry/prom-level2
       - SCRAPE_PATHS=/federate

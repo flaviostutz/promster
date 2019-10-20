@@ -28,7 +28,7 @@ services:
     ports:
       - 9090
     environment:
-      - LOG_LEVEL=debug
+      - LOG_LEVEL=info
 
       - REGISTRY_ETCD_URL=http://etcd0:2379
       - REGISTRY_ETCD_BASE=/registry

@@ -104,6 +104,7 @@ services:
       - SCRAPE_MATCH_REGEX=level2:.*
       - SCRAPE_INTERVAL=5s
       - SCRAPE_TIMEOUT=3s
+      - SCRAPE_SHARD_ENABLE=false
       - RETENTION_TIME=30m
 
       - RECORD_RULE_1_NAME=level3:http_requests_app_total:irate
@@ -134,6 +135,7 @@ services:
 * SCRAPE_ETCD_PATH base path for services registered
 * SCRAPE_PATHS uri for getting metrics. ex.: /metrics
 * SCRAPE_MATCH_REGEX when using /federated scrape paths, this regex will be used to match which metrics will be returned by the federate endpoint
+* SCRAPE_SHARD_ENABLE Enable sharding distribution among targets so that each Promster instance will scrape a different set of targets, enabling distribution of load among instances. Defaults to true. Use false if you want all instances to scrape the same set of targets. This maybe useful, for example, if you want to create a set of instances with the same data to distribute user queries among instances with the same dataset
 * SCRAPE_INTERVAL time between scrapes for automatic scraping
 * SCRAPE_TIMEOUT time for a timeout signal
 

@@ -146,6 +146,7 @@ services:
 * REGISTRY_ETCD_BASE base path inside etcd for the service dir
 * REGISTRY_SERVICE name of the service used to register nodes on this level
 * REGISTRY_TTL expiration time of an entry in ETCD when registering nodes
+* if REGISTRY_* ENVs are not defined, no sharding of targets will take place so that all instances will scrape all targets
 
 * RECORD_RULE_1_NAME metric name that will receive contents for expr 1. where '1' maybe any sequential number for multiple rules creation
 * RECORD_RULE_1_EXPR expression/query that will generate contents to the metric

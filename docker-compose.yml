@@ -29,6 +29,8 @@ services:
       - 9090
     environment:
       - LOG_LEVEL=info
+      - SCHEME=http
+      - TLS_INSECURE=false
 
       - REGISTRY_ETCD_URL=http://etcd0:2379
       - REGISTRY_ETCD_BASE=/registry

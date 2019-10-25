@@ -16,6 +16,9 @@ FROM prom/prometheus:v2.12.0
 
 ENV LOG_LEVEL 'info'
 
+ENV SCHEME http
+ENV TLS_INSECURE false
+
 ENV SCRAPE_ETCD_URL ""
 ENV SCRAPE_ETCD_PATH ""
 ENV SCRAPE_PATHS /metrics

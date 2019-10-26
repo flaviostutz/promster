@@ -47,6 +47,8 @@ services:
       - 9090
     environment:
       - LOG_LEVEL=info
+      - SCHEME=http
+      - TLS_INSECURE=false
 
       - REGISTRY_ETCD_URL=http://etcd0:2379
       - REGISTRY_ETCD_BASE=/registry
@@ -143,6 +145,9 @@ services:
 * SCRAPE_SHARD_ENABLE Enable sharding distribution among targets so that each Promster instance will scrape a different set of targets, enabling distribution of load among instances. Defaults to true. Use false if you want all instances to scrape the same set of targets. This maybe useful, for example, if you want to create a set of instances with the same data to distribute user queries among instances with the same dataset
 * SCRAPE_INTERVAL time between scrapes for automatic scraping
 * SCRAPE_TIMEOUT time for a timeout signal
+
+* SCHEME Target's scheme. Either http or https
+* TLS_INSECURE Disable validation of the server certificate. Either true or false
 
 * EVALUATION_INTERVAL time between record rules and alerts evaliation
 * RETENTION_TIME time during which the data will be stored

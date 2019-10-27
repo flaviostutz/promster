@@ -39,6 +39,8 @@ func main() {
 	scrapeMatch0 := flag.String("scrape-match", "", "Metrics regex filter applied on scraped targets. Commonly used in conjunction with /federate metrics endpoint")
 	scrapeShardingEnable0 := flag.Bool("scrape-shard-enable", false, "Enable sharding distribution among targets so that each Promster instance will scrape a different set of targets, enabling distribution of load among instances. Defaults to true.")
 	evaluationInterval0 := flag.String("evaluation-interval", "30s", "Prometheus evaluation interval")
+	scheme0 := flag.String("scheme", "http", "Scrape scheme, either http or https")
+	tlsInsecure0 := flag.String("tls-insecure", "false", "Disable validation of the server certificate. true or false")
 	flag.Parse()
 
 	etcdURLRegistry := *etcdURLRegistry0
@@ -54,6 +56,8 @@ func main() {
 	evaluationInterval := *evaluationInterval0
 	se := *scrapePaths0
 	scrapePaths := strings.Split(se, ",")
+  scheme := *scheme0
+  tlsInsecure := * tlsInsecure0
 
 	// if etcdURLRegistry == "" {
 	// 	panic("--etcd-url-registry should be defined")
@@ -100,7 +104,7 @@ func main() {
 
 	logrus.Debugf("Updating prometheus file...")
 	time.Sleep(5 * time.Second)
-	err := updatePrometheusConfig("/prometheus.yml", scrapeInterval, scrapeTimeout, evaluationInterval, scrapePaths, scrapeMatch)
+	err := updatePrometheusConfig("/prometheus.yml", scrapeInterval, scrapeTimeout, evaluationInterval, scrapePaths, scrapeMatch, scheme, tlsInsecure)
 	if err != nil {
 		panic(err)
 	}
@@ -175,14 +179,16 @@ func main() {
 	}
 }
 
-func updatePrometheusConfig(prometheusFile string, scrapeInterval string, scrapeTimeout string, evaluationInterval string, scrapePaths []string, scrapeMatch string) error {
-	logrus.Infof("updatePrometheusConfig. scrapeInterval=%s,scrapeTimeout=%s,evaluationInterval=%s,scrapePaths=%s,scrapeMatch=%s", scrapeInterval, scrapeTimeout, evaluationInterval, scrapePaths, scrapeMatch)
+func updatePrometheusConfig(prometheusFile string, scrapeInterval string, scrapeTimeout string, evaluationInterval string, scrapePaths []string, scrapeMatch string, scheme string, tlsInsecure string) error {
+	logrus.Infof("updatePrometheusConfig. scrapeInterval=%s,scrapeTimeout=%s,evaluationInterval=%s,scrapePaths=%s,scrapeMatch=%s,scheme=%s,tlsInsecure=%s", scrapeInterval, scrapeTimeout, evaluationInterval, scrapePaths, scrapeMatch, scheme, tlsInsecure)
 	input := make(map[string]interface{})
 	input["scrapeInterval"] = scrapeInterval
 	input["scrapeTimeout"] = scrapeTimeout
 	input["evaluationInterval"] = evaluationInterval
 	input["scrapePaths"] = scrapePaths
 	input["scrapeMatch"] = scrapeMatch
+	input["scheme"] = scheme
+	input["tlsInsecure"] = tlsInsecure
 	contents, err := executeTemplate("/", "prometheus.yml.tmpl", input)
 	if err != nil {
 		return err

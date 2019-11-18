@@ -63,6 +63,8 @@ services:
 
       - RECORD_RULE_1_NAME=level1:http_requests_app_total:irate
       - RECORD_RULE_1_EXPR=sum(irate(http_requests_app_total[2m])) without (job,server_name,instance)
+      - RECORD_RULE_1_LABELS=site:s1,region:b1
+
       - EVALUATION_INTERVAL=20s
 
   promster-level2:
@@ -160,3 +162,4 @@ services:
 
 * RECORD_RULE_1_NAME metric name that will receive contents for expr 1. where '1' maybe any sequential number for multiple rules creation
 * RECORD_RULE_1_EXPR expression/query that will generate contents to the metric
+* RECORD_RULE_1_LABELS a comma separated list of key/value pairs in the format `labelName:labelValue` to work with Prometheus's label redefinition features

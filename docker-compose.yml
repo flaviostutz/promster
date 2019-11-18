@@ -28,7 +28,7 @@ services:
     ports:
       - 9090
     environment:
-      - LOG_LEVEL=info
+      - LOG_LEVEL=debug
       - SCHEME=http
       - TLS_INSECURE=false
 
@@ -45,6 +45,8 @@ services:
 
       - RECORD_RULE_1_NAME=level1:http_requests_app_total:irate
       - RECORD_RULE_1_EXPR=sum(irate(http_requests_app_total[2m])) without (job,server_name,instance)
+      - RECORD_RULE_1_LABELS=site:s1,region:blue
+
       - EVALUATION_INTERVAL=20s
 
   promster-level2:

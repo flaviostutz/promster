@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/clientv3"
-	"github.com/flaviostutz/etcd-registry/etcd-registry"
+	etcdregistry "github.com/flaviostutz/etcd-registry/etcd-registry"
 	"github.com/serialx/hashring"
 
 	"github.com/sirupsen/logrus"
@@ -56,8 +56,8 @@ func main() {
 	evaluationInterval := *evaluationInterval0
 	se := *scrapePaths0
 	scrapePaths := strings.Split(se, ",")
-  scheme := *scheme0
-  tlsInsecure := * tlsInsecure0
+	scheme := *scheme0
+	tlsInsecure := *tlsInsecure0
 
 	// if etcdURLRegistry == "" {
 	// 	panic("--etcd-url-registry should be defined")
@@ -208,17 +208,55 @@ func updatePrometheusConfig(prometheusFile string, scrapeInterval string, scrape
 	return nil
 }
 
+// RecordingRule defines a structure to simplify the handling of Prometheus recording rules
+type RecordingRule struct {
+	name   string
+	expr   string
+	labels map[string]string
+}
+
+// getLabelMap builds a label map from a raw configuration string
+func getLabelMap(rawLabels string) map[string]string {
+	toReturn := make(map[string]string)
+	mappings := strings.Split(rawLabels, ",")
+	for _, mapping := range mappings {
+		if mapping != "" {
+			var keyValue = strings.Split(mapping, ":")
+			toReturn[keyValue[0]] = keyValue[1]
+		}
+	}
+
+	return toReturn
+}
+
+// getPrintableLabels builds the labels in a printable format
+func getPrintableLabels(labels map[string]string) string {
+	if len(labels) <= 0 {
+		return ""
+	}
+
+	var toReturn = `
+      labels:`
+	for k, v := range labels {
+		var format = `
+        %s: %s`
+		toReturn += fmt.Sprintf(format, k, v)
+	}
+	return toReturn
+}
+
 func createRulesFromENV(rulesFile string) error {
 	env := make(map[string]string)
 	for _, e := range os.Environ() {
 		pair := strings.Split(e, "=")
 		env[pair[0]] = pair[1]
 	}
-
-	rules := make(map[string]string)
+	rules := make([]RecordingRule, 0)
 	for i := 1; i < 100; i++ {
 		kname := fmt.Sprintf("RECORD_RULE_%d_NAME", i)
 		kexpr := fmt.Sprintf("RECORD_RULE_%d_EXPR", i)
+		klabels := fmt.Sprintf("RECORD_RULE_%d_LABELS", i)
+
 		vname, exists := env[kname]
 		if !exists {
 			break
@@ -227,7 +265,8 @@ func createRulesFromENV(rulesFile string) error {
 		if !exists {
 			break
 		}
-		rules[vname] = vexpr
+
+		rules = append(rules, RecordingRule{name: vname, expr: vexpr, labels: getLabelMap(env[klabels])})
 	}
 
 	if len(rules) == 0 {
@@ -241,16 +280,17 @@ func createRulesFromENV(rulesFile string) error {
   - name: env-rules
     rules:`
 
-	for k, v := range rules {
+	for _, v := range rules {
 		rc := `%s
     - record: %s
-      expr: %s`
-		rulesContents = fmt.Sprintf(rc, rulesContents, k, v)
+      expr: %s
+%s
+`
+		rulesContents = fmt.Sprintf(rc, rulesContents, v.name, v.expr, getPrintableLabels(v.labels))
 	}
 
-	logrus.Debugf("rulesContents: %s", rulesContents)
+	logrus.Debugf("%s: '%v'", rulesFile, rulesContents)
 
-	logrus.Debugf("%s: '%s'", rulesFile, rulesContents)
 	err := ioutil.WriteFile(rulesFile, []byte(rulesContents), 0666)
 	if err != nil {
 		return err

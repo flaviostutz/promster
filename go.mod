@@ -20,8 +20,6 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway v1.11.3 // indirect
 	github.com/jonboulle/clockwork v0.1.0 // indirect
 	github.com/minio/highwayhash v1.0.0 // indirect
-	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
-	github.com/modern-go/reflect2 v1.0.1 // indirect
 	github.com/prometheus/client_golang v1.2.1 // indirect
 	github.com/serialx/hashring v0.0.0-20190515033939-7706f26af194
 	github.com/sirupsen/logrus v1.4.2
@@ -31,7 +29,6 @@ require (
 	go.etcd.io/etcd v3.3.17+incompatible // indirect
 	go.uber.org/multierr v1.2.0 // indirect
 	golang.org/x/time v0.0.0-20190921001708-c4c64cad1fd0 // indirect
-	google.golang.org/appengine v1.4.0 // indirect
 	google.golang.org/grpc v1.24.0 // indirect
 	sigs.k8s.io/yaml v1.1.0 // indirect
 )

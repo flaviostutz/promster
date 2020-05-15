@@ -189,6 +189,7 @@ func updatePrometheusConfig(prometheusFile string, scrapeInterval string, scrape
 	input["scrapeMatch"] = scrapeMatch
 	input["scheme"] = scheme
 	input["tlsInsecure"] = tlsInsecure
+	input["prometheusServer"] = getSelfNodeName()
 	contents, err := executeTemplate("/", "prometheus.yml.tmpl", input)
 	if err != nil {
 		return err

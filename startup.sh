@@ -21,7 +21,7 @@ promster \
     --registry-node-ttl=$REGISTRY_TTL&
 
 echo "Starting Prometheus..."
-prometheus --config.file=/prometheus.yml --web.enable-lifecycle --storage.tsdb.retention=$RETENTION_TIME
+prometheus --config.file=/prometheus.yml --web.enable-lifecycle --storage.tsdb.retention.time=$RETENTION_TIME
 
 
 

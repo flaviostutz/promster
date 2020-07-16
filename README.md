@@ -1,4 +1,8 @@
 # promster
+
+[<img src="https://img.shields.io/docker/pulls/flaviostutz/promster"/>](https://hub.docker.com/r/flaviostutz/promster)
+[<img src="https://img.shields.io/docker/automated/flaviostutz/promster"/>](https://hub.docker.com/r/flaviostutz/promster)
+
 Prometheus with dynamic clustering and scrape sharding capabilities based on ETCD.
 
 Promster is a process that runs in parallel to Prometheus and operates by changing prometheus.yml and file with lists of hosts/federated Prometheus to be scraped dynamically.

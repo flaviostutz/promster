@@ -22,6 +22,8 @@ github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSs
 github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
 github.com/flaviostutz/etcd-registry v0.0.0-20190213011056-0b3968af504e h1:oieo/pgSA27BbaRYsB6wuaRUGYgkDicV5LZ97du3teE=
 github.com/flaviostutz/etcd-registry v0.0.0-20190213011056-0b3968af504e/go.mod h1:qmN8kGNd+MPQ1InMs/ZbE5DKZptMUdFh2o+la/WFd28=
+github.com/flaviostutz/etcd-registry v0.0.0-20200717223856-b120b4d300a0 h1:FuDfNcLQ0/oLiMpJTEKZzHEAnUYWSGRbxGKEvF//th4=
+github.com/flaviostutz/etcd-registry v0.0.0-20200717223856-b120b4d300a0/go.mod h1:qmN8kGNd+MPQ1InMs/ZbE5DKZptMUdFh2o+la/WFd28=
 github.com/ghodss/yaml v1.0.0/go.mod h1:4dBDuWmgqj2HViK6kFavaiC9ZROes6MMH2rRYeMEF04=
 github.com/go-cmd/cmd v1.0.5 h1:IK23uTRWxq6UJnNWp8nKO7mVCwnPfbaxA2lhzEKfNj0=
 github.com/go-cmd/cmd v1.0.5/go.mod h1:y8q8qlK5wQibcw63djSl/ntiHUHXHGdCkPk0j4QeW4s=

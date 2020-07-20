@@ -9,7 +9,7 @@ require (
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f // indirect
 	github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
-	github.com/flaviostutz/etcd-registry v0.0.0-20190213011056-0b3968af504e
+	github.com/flaviostutz/etcd-registry v0.0.0-20200717223856-b120b4d300a0
 	github.com/go-cmd/cmd v1.0.5
 	github.com/gogo/protobuf v1.3.1 // indirect
 	github.com/google/btree v1.0.0 // indirect

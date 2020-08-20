@@ -1,7 +1,8 @@
 # promster
 
 [<img src="https://img.shields.io/docker/pulls/flaviostutz/promster"/>](https://hub.docker.com/r/flaviostutz/promster)
-[<img src="https://img.shields.io/docker/automated/flaviostutz/promster"/>](https://hub.docker.com/r/flaviostutz/promster)
+[<img src="https://img.shields.io/docker/automated/flaviostutz/promster"/>](https://hub.docker.com/r/flaviostutz/promster)<br/>
+[<img src="https://goreportcard.com/badge/github.com/flaviostutz/promster"/>](https://goreportcard.com/report/github.com/flaviostutz/promster)
 
 Prometheus with dynamic clustering and scrape sharding capabilities based on ETCD.
 

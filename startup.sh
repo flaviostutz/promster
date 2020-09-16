@@ -20,8 +20,8 @@ promster \
     --registry-service-name=$REGISTRY_SERVICE \
     --registry-node-ttl=$REGISTRY_TTL&
 
+
 echo "Starting Prometheus..."
-prometheus --config.file=/prometheus.yml --web.enable-lifecycle --storage.tsdb.retention.time=$RETENTION_TIME
-
-
+cmd="prometheus --config.file=/prometheus.yml --log.level=$LOG_LEVEL --web.enable-lifecycle --storage.tsdb.retention.time=$RETENTION_TIME $PROMETHEUS_ARGS"
+eval "$cmd"
 

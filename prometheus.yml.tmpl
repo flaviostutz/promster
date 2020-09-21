@@ -16,12 +16,16 @@ scrape_configs:
     static_configs:
     - targets: ['localhost:9090']
 
-{{$scheme := .scheme}}
-{{$tlsInsecure := .tlsInsecure}}
-{{$scrapeMatch := .scrapeMatch}}
+{{- $scheme := .scheme}}
+{{- $tlsInsecure := .tlsInsecure}}
+{{- $scrapeMatch := .scrapeMatch}}
 {{range .scrapePaths}}
   - job_name: '{{.}}'
     scheme: {{$scheme}}
+    {{- if $.metricsRelabel }}
+    metric_relabel_configs:
+    {{- $.metricsRelabel | nindent 4  }}
+    {{- end }}
     tls_config:
       insecure_skip_verify: {{$tlsInsecure}}
     metrics_path: {{.}}

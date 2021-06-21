@@ -12,7 +12,7 @@ ADD . ./
 RUN CGO_ENABLED=0 GOOS=linux go build -o /go/bin/promster
 
 
-FROM prom/prometheus:v2.15.1
+FROM prom/prometheus:v2.27.1
 
 ENV LOG_LEVEL 'info'
 

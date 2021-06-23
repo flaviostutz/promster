@@ -18,7 +18,8 @@ promster \
     --registry-etcd-url=$REGISTRY_ETCD_URL \
     --registry-etcd-base=$REGISTRY_ETCD_BASE \
     --registry-service-name=$REGISTRY_SERVICE \
-    --registry-node-ttl=$REGISTRY_TTL&
+    --registry-node-ttl=$REGISTRY_TTL \
+    --metrics-relabel-file=$METRICS_RELABEL&
 
 echo "Starting Prometheus..."
 prometheus --config.file=/prometheus.yml --web.enable-lifecycle --storage.tsdb.retention.time=$RETENTION_TIME

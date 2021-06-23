@@ -1,0 +1,4 @@
+- source_labels: ["__name__"]
+  regex: "prometheus_.*"
+  target_label: "instance"
+  replacement: "teste"

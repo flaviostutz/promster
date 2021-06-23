@@ -9,8 +9,10 @@ import (
 	"os"
 	"path"
 	"strings"
+	"text/template"
 	"time"
 
+	"github.com/Masterminds/sprig"
 	"github.com/coreos/etcd/clientv3"
 	etcdregistry "github.com/flaviostutz/etcd-registry/etcd-registry"
 	"github.com/serialx/hashring"
@@ -41,6 +43,9 @@ func main() {
 	evaluationInterval0 := flag.String("evaluation-interval", "30s", "Prometheus evaluation interval")
 	scheme0 := flag.String("scheme", "http", "Scrape scheme, either http or https")
 	tlsInsecure0 := flag.String("tls-insecure", "false", "Disable validation of the server certificate. true or false")
+	metricsRelabelFile := flag.String("metrics-relabel-file", "", "Metrics relabel file")
+	prometheusTemplateDir := flag.String("prometheus-template", "/", "Prometheus template directory")
+	prometheusFile := flag.String("prometheus-file", "/prometheus.yml", "Prometheus file to be writeen.")
 	flag.Parse()
 
 	etcdURLRegistry := *etcdURLRegistry0
@@ -101,10 +106,19 @@ func main() {
 	// if err != nil {
 	// 	panic(err)
 	// }
-
+	logrus.Debugf("Relabel config file: %s", *metricsRelabelFile)
+	relabelMetrics := ""
+	if *metricsRelabelFile != "" {
+		fileContent, err := ioutil.ReadFile(*metricsRelabelFile)
+		if err != nil {
+			logrus.Debugf("Cannot read metrics relabel file")
+		}
+		logrus.Debugf("Metrics relabel file read: %s", string(fileContent))
+		relabelMetrics = string(fileContent)
+	}
 	logrus.Debugf("Updating prometheus file...")
 	time.Sleep(5 * time.Second)
-	err := updatePrometheusConfig("/prometheus.yml", scrapeInterval, scrapeTimeout, evaluationInterval, scrapePaths, scrapeMatch, scheme, tlsInsecure)
+	err := updatePrometheusConfig(*prometheusTemplateDir, scrapeInterval, scrapeTimeout, evaluationInterval, scrapePaths, scrapeMatch, scheme, tlsInsecure, relabelMetrics, *prometheusFile)
 	if err != nil {
 		panic(err)
 	}
@@ -179,7 +193,7 @@ func main() {
 	}
 }
 
-func updatePrometheusConfig(prometheusFile string, scrapeInterval string, scrapeTimeout string, evaluationInterval string, scrapePaths []string, scrapeMatch string, scheme string, tlsInsecure string) error {
+func updatePrometheusConfig(prometheusTemplateDir string, scrapeInterval string, scrapeTimeout string, evaluationInterval string, scrapePaths []string, scrapeMatch string, scheme string, tlsInsecure string, metricsRelabel string, prometheusFile string) error {
 	logrus.Infof("updatePrometheusConfig. scrapeInterval=%s,scrapeTimeout=%s,evaluationInterval=%s,scrapePaths=%s,scrapeMatch=%s,scheme=%s,tlsInsecure=%s", scrapeInterval, scrapeTimeout, evaluationInterval, scrapePaths, scrapeMatch, scheme, tlsInsecure)
 	input := make(map[string]interface{})
 	input["scrapeInterval"] = scrapeInterval
@@ -190,15 +204,21 @@ func updatePrometheusConfig(prometheusFile string, scrapeInterval string, scrape
 	input["scheme"] = scheme
 	input["tlsInsecure"] = tlsInsecure
 	input["prometheusServer"] = getSelfNodeName()
-	contents, err := executeTemplate("/", "prometheus.yml.tmpl", input)
-	if err != nil {
-		return err
-	}
+	input["metricsRelabel"] = metricsRelabel
 
-	logrus.Debugf("%s: '%s'", prometheusFile, contents)
-	err = ioutil.WriteFile(prometheusFile, []byte(contents), 0666)
+	prometheusTemplateFile := prometheusTemplateDir + "prometheus.yml.tmpl"
+	logrus.Debugf("Template file: %s", prometheusTemplateFile)
+	t := template.Must(template.New("prometheus.yml.tmpl").Funcs(sprig.TxtFuncMap()).ParseFiles(prometheusTemplateFile))
+	logrus.Debugf("%s:", "/prometheus.yml")
+	f, err := os.Create(prometheusFile)
 	if err != nil {
-		return err
+		logrus.Println("create file: ", err)
+		return nil
+	}
+	err = t.ExecuteTemplate(f, "prometheus.yml.tmpl", input)
+	if err != nil {
+		fmt.Printf("Error during template execution: %s", err)
+		return nil
 	}
 
 	_, err = ExecShell("wget --post-data='' http://localhost:9090/-/reload -O -")
